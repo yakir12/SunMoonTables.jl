@@ -1,5 +1,7 @@
 module SunMoonTables
 
-# Write your package code here.
+export fun
+
+fun(x) = 2x
 
 end
