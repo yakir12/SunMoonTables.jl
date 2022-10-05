@@ -18,7 +18,7 @@ For the moon we have the time of the moonrise and moonset if it occurs during th
 
 # Notes
 - The times are in local time (local to the coordinates you specified)
-- During winter in the northern hemisphere (and vice versa), the sun will not hit higher elevations. Those null-elevations will therefore be omitted from the resulting table.
+- During winter in the northern hemisphere (and vice versa), the sun might not reach very high elevations. Those null-elevations will therefore be omitted from the resulting table.
 - To change the default elevations run `main` with the keyword-argument `elevations`. For example, to change the elevations in the example above to 5°, 10°, and 15°, run:
 ```julia
 main(Date(2000, 1, 1), Date(2000, 1, 10), 51.5085, -0.1257; elevations = [5, 10, 15])
