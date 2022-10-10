@@ -14,17 +14,20 @@ main(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257)
 
 ## What's in the tables
 For each day we have sunrise with time and azimuth, time for each of the (default) elevations: 20°, 30°, 45°, 60°, and 75° beforenoon, time and azimuth at noon (i.e. highest sun-elevation that day), and afternoon, as well as time and azimuth for sunset. 
-For the moon we have the time of the moonrise and moonset if it occurs during the night (i.e. between sunset and sunrise), as well as the phase of the moon (in percent).
+For the moon we have the time of each of the moonrises and moonsets within every 24 hours, as well as the phase of the moon (in percent).
+
+# Options
+- `location_name`: A name for the location (e.g. Vryburg); only used in the title of the table and defaults to "latitude:longitude".
+- `elevations`: Specific sun elevations to be included in the table. Defaults to 20°, 30°, 45°, 60°, and 75°.
+- `points_per_day`: Number of data points per day; increase to have more accurate (but slower) results. Defaults to the number of hours per day: 24.
+- `save_table`: Set to true to save a csv copy of the table. Defaults to false.
+
+For example, to produce a table for the first 10 days of June in the year 2000 for London, with elevations 5°, 10°, 15°, "London city" in its title, 240 data points per day for higher accuracy, and saved csv copy of the results, we would run:
+```julia
+main(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257; elevations=[5, 10, 15], location_name="London city", points_per_day=240, save_table=true))
+```
 
 # Notes
 - The times are in local time (local to the coordinates you specified)
 - During winter in the northern hemisphere (and vice versa), the sun might not reach very high elevations. Those null-elevations will therefore be omitted from the resulting table.
-- To change the default elevations run `main` with the keyword-argument `elevations`. For example, to change the elevations in the example above to 5°, 10°, and 15°, run:
-```julia
-main(Date(2000, 1, 1), Date(2000, 1, 10), 51.5085, -0.1257; elevations = [5, 10, 15])
-```
-- It is entirely possible for the moon to rise after sunrise and set past midnight of the same day. The result of which would be no times in the table for both moonrise and moonset for that specific day (but be sure the moon will then set "early" the next day, i.e. a few minutes after midnight of the day "missing" a moonrise and moonset).
-- To save a csv file of the resulting table run with `save_table=true`, e.g.: 
-```julia
-main(Date(2000, 1, 1), Date(2000, 1, 10), 51.5085, -0.1257; save_table=true)
-```
+- It is entirely possible for the moon to rise in one day but set the next day, resulting in a seldom moonrise in one of the days.

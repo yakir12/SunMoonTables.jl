@@ -111,7 +111,7 @@ function get_table(start_date, end_date, latitude, longitude, elevations, points
     return sunmoon(start_datetime, end_datetime, latitude, longitude, elevation, tz, elevations_set, points_per_day)
 end
 
-function main(start_date, end_date, latitude, longitude; location_name = "$latitude:$longitude", elevations=[20, 30, 45, 60, 75], points_per_day=24, save_table=false)
+function main(start_date, end_date, latitude, longitude; location_name="$latitude:$longitude", elevations=[20, 30, 45, 60, 75], points_per_day=24, save_table=false)
     @assert end_date ≥ start_date "ending date must be equal or later than starting date"
     @assert -90 ≤ latitude ≤ 90 "latitude must be between -90 and 90"
     @assert -180 ≤ latitude ≤ 180 "longitude must be between -180 and 180"
