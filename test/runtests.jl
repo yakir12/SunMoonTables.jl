@@ -8,3 +8,10 @@ start_date, end_date, latitude, longitude, elevations, points_per_day = (Date(20
     df = SunMoonTables.get_table(start_date, end_date, latitude, longitude, elevations, points_per_day)
     @test tbl == df
 end
+
+@testset "IO" begin
+    df = SunMoonTables.DataFrame()
+    start_date = end_date = location_name = ""
+    file = SunMoonTables.print2html(df, start_date, end_date, location_name)
+    @test isfile(file)
+end

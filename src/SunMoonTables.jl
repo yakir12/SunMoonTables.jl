@@ -117,12 +117,13 @@ function main(start_date, end_date, latitude, longitude; location_name="$latitud
     @assert -180 ≤ latitude ≤ 180 "longitude must be between -180 and 180"
     df = get_table(start_date, end_date, latitude, longitude, elevations, points_per_day)
     save_table && CSV.write("table.csv", df)
-    print2html(df, start_date, end_date, location_name)
+    file = print2html(df, start_date, end_date, location_name)
+    DefaultApplication.open(file)
 end
 
 function print2html(df, start_date, end_date, location_name)
     file = tempname() * ".html"
-    tf = PrettyTables.HTMLTableFormat(css = PrettyTables.tf_html_simple.css * """
+    tf = PrettyTables.HtmlTableFormat(css = PrettyTables.tf_html_simple.css * """
                                       td, th {
                                       border: 2px solid black;
                                       border-left: 2px solid black;
@@ -133,9 +134,9 @@ function print2html(df, start_date, end_date, location_name)
                                       font-weight: bold;
                                       }""")
     open(file, "w") do io
-        pretty_table(io, df; backend=Val(:html), tf=tf, nosubheader = true, formatters = ft_nomissing, standalone=true, highlighters=hl_row(1:2:nrow(df), HTMLDecoration(background = "light_gray",)), show_row_number=false, title="$start_date - $end_date @ $location_name", title_alignment=:c)
+        pretty_table(io, df; backend=Val(:html), tf=tf, show_subheader = false, formatters = ft_nomissing, standalone=true, highlighters=hl_row(1:2:nrow(df), HtmlDecoration(background = "light_gray",)), show_row_number=false, title="$start_date - $end_date @ $location_name", title_alignment=:c)
     end
-    DefaultApplication.open(file)
+    return file
 end
 
 end
