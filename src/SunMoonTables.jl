@@ -121,7 +121,7 @@ function main(start_date, end_date, latitude, longitude; location_name="$latitud
 end
 
 function print2html(df, start_date, end_date, location_name)
-    file, io = mktemp(; cleanup=false)
+    file = tempname() * ".html"
     tf = PrettyTables.HTMLTableFormat(css = PrettyTables.tf_html_simple.css * """
                                       td, th {
                                       border: 2px solid black;
@@ -132,8 +132,9 @@ function print2html(df, start_date, end_date, location_name)
                                       font-size: 20px; 
                                       font-weight: bold;
                                       }""")
-    pretty_table(io, df; backend=Val(:html), tf=tf, nosubheader = true, formatters = ft_nomissing, standalone=true, highlighters=hl_row(1:2:nrow(df), HTMLDecoration(background = "light_gray",)), show_row_number=false, title="$start_date - $end_date @ $location_name", title_alignment=:c)
-    close(io)
+    open(file, "w") do io
+        pretty_table(io, df; backend=Val(:html), tf=tf, nosubheader = true, formatters = ft_nomissing, standalone=true, highlighters=hl_row(1:2:nrow(df), HTMLDecoration(background = "light_gray",)), show_row_number=false, title="$start_date - $end_date @ $location_name", title_alignment=:c)
+    end
     DefaultApplication.open(file)
 end
 
