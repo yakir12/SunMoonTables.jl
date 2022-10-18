@@ -13,7 +13,7 @@ main(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257)
 ```
 
 ## What's in the tables
-For each day we have sunrise with time and azimuth, time for each of the (default) elevations: 20°, 30°, 45°, 60°, and 75° beforenoon, time and azimuth at noon (i.e. highest sun-elevation that day), and afternoon, as well as time and azimuth for sunset. 
+For each day we have sunrise with time and local magnetic azimuth, time for each of the (default) elevations: 20°, 30°, 45°, 60°, and 75° beforenoon, time and elevation at noon (i.e. highest sun-elevation that day), and afternoon, as well as time and local magnetic azimuth for sunset. 
 For the moon we have the time of each of the moonrises and moonsets within every 24 hours, as well as the phase of the moon (in percent).
 
 # Options
@@ -28,6 +28,7 @@ main(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257; elevations=[5, 10, 1
 ```
 
 # Notes
-- The times are in local time (local to the coordinates you specified)
+- The reported azimuth is not the azimuth to the global geographic North but to the local magnetic North. The angle between these two directions is called the magnetic declination angle and is reported to the user when running `main`. The declination angle does not change much within 1 year and 100 km.
+- The times are in local time (local to the coordinates you specified).
 - During winter in the northern hemisphere (and vice versa), the sun might not reach very high elevations. Those null-elevations will therefore be omitted from the resulting table.
 - It is entirely possible for the moon to rise in one day but set the next day, resulting in a seldom moonrise in one of the days.

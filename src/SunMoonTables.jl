@@ -1,67 +1,74 @@
 module SunMoonTables
 
-using Dates, AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Earth2014, Interpolations, TimeZoneFinder, DefaultApplication, CSV, Statistics
+using Dates, Statistics
+using AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Earth2014, Interpolations, TimeZoneFinder, DefaultApplication, CSV, SatelliteToolbox
 
 export main, Date
 
-function elevation_timezone(latitude, longitude)
+function altitude_timezone(latitude, longitude)
     x, y, z = Earth2014.load(; hide_citation=true)
     world = linear_interpolation((y, x), z)
-    elevation = world(latitude, longitude)
+    altitude = world(latitude, longitude)
     tz_str = timezone_at(latitude, longitude) # does not exist!
-    elevation, tz_str
+    altitude, tz_str
 end
 
-function sun_alt_az(julian_dates, latitude, longitude, elevation)
+function sun_alt_az(julian_dates, latitude, longitude, altitude)
     right_ascension, declination = sunpos(julian_dates)
-    altitude, azimuth, _ = eq2hor(right_ascension, declination, julian_dates, latitude, longitude, elevation)
-    return (; altitude, azimuth)
+    α, γ, _ = eq2hor(right_ascension, declination, julian_dates, latitude, longitude, altitude)
+    return (; α, γ)
 end
 
-sun_altitude(julian_dates, latitude, longitude, elevation) = sun_alt_az(julian_dates, latitude, longitude, elevation).altitude
+sun_α(julian_dates, latitude, longitude, altitude) = sun_alt_az(julian_dates, latitude, longitude, altitude).α
 
-function moon_altitude(julian_dates, latitude, longitude, elevation)
+function moon_α(julian_dates, latitude, longitude, altitude)
     right_ascension, declination = moonpos(julian_dates)
-    altitude, azimuth, _  = eq2hor(right_ascension, declination, julian_dates, latitude, longitude, elevation)
-    return altitude
+    α, γ, _  = eq2hor(right_ascension, declination, julian_dates, latitude, longitude, altitude)
+    return α
 end
 
-function get_sun_moon(jd1, jd2, latitude, longitude, elevation, points_per_day)
+function get_sun_moon(jd1, jd2, latitude, longitude, altitude, points_per_day)
     ndays = round(Int, jd2 - jd1)
     S = Chebyshev(jd1..jd2)
     p = points(S, points_per_day*ndays)
-    v = sun_altitude.(p, latitude, longitude, elevation)
+    v = sun_α.(p, latitude, longitude, altitude)
     sun = Fun(S, ApproxFun.transform(S, v))
 
-    v = moon_altitude.(p, latitude, longitude, elevation)
+    v = moon_α.(p, latitude, longitude, altitude)
     moon = Fun(S, ApproxFun.transform(S, v))
     return sun, moon
 end
 
 julian2dt(jd, tz) = DateTime(astimezone(TimeZones.julian2zdt(jd), tz))
 
-function sun_jd2row(jd, latitude, longitude, elevation, tz, dsun)
-    el, az = sun_alt_az(jd, latitude, longitude, elevation)
+function magnetic_declination(year, latitude, longitude, altitude)
+    mfv = igrfd(year, altitude, latitude, longitude, Val(:geodetic))
+    return atand(mfv[2], mfv[1])
+end
+
+decimaldate(dtm) = year(dtm) + (dayofyear(dtm) - 1) / daysinyear(dtm)
+
+function sun_jd2row(jd, latitude, longitude, altitude, tz, dsun, md)
+    el, az = sun_alt_az(jd, latitude, longitude, altitude)
     elevation = abs(el) < 1 ? 0 : round(Int, el)
-    azimuth = round(Int, az)
     dt = round(julian2dt(jd, tz), Minute(1))
     date = Date(dt)
     time = Dates.format(Time(dt), "HH:MM")
+    γ = round(Int, az + md)
     sl = dsun(jd)
     variable = abs(sl) < 0.01 ? "Noon" : sl > 0 ? "↑$(elevation)°" : "↓$(elevation)°"
-    value = variable == "Noon" ? join([time, string(elevation, "°")], " ") : elevation == 0 ? join([time, string(azimuth, "°")], " ") : time
+    value = variable == "Noon" ? join([time, string(elevation, "°")], " ") : elevation == 0 ? join([time, string(γ, "°")], " ") : time
     (; Date = date, variable, value, elevation)
 end
 
-function get_sun_tbl(sun, elevations_set, latitude, longitude, elevation, tz)
+function get_sun_tbl(sun, elevations_set, latitude, longitude, altitude, tz, md)
     dsun = sun'
     jd = roots(dsun)
-    # elevations = copy(elevations)
     push!(elevations_set, 0)
     filter!(x -> 0 ≤ x ≤ 90, elevations_set)
     elevations = sort(collect(elevations_set))
     jd = mapreduce(e -> roots(sun - e), vcat, elevations, init = jd)
-    df = DataFrame(sun_jd2row.(jd, latitude, longitude, elevation, tz, dsun))
+    df = DataFrame(sun_jd2row.(jd, latitude, longitude, altitude, tz, dsun, md))
     subset!(df, :elevation => ByRow(≥(0)))
     sun_tbl = unstack(df, :Date, :variable, :value; combine=last)
     cols = filter(∈(unique(subset(df, :variable => ByRow(≠("Noon"))).elevation)), elevations)
@@ -88,13 +95,13 @@ function get_moon_tbl(moon, sun, tz, jd1, jd2)
     return df2
 end
 
-function sunmoon(start_datetime, end_datetime, latitude, longitude, elevation, tz, elevations_set, points_per_day)
+function sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz, elevations_set, points_per_day, md)
     jd1 = TimeZones.zdt2julian(ZonedDateTime(start_datetime, tz))
     jd2 = TimeZones.zdt2julian(ZonedDateTime(end_datetime, tz))
 
-    sun, moon = get_sun_moon(jd1, jd2, latitude, longitude, elevation, points_per_day)
+    sun, moon = get_sun_moon(jd1, jd2, latitude, longitude, altitude, points_per_day)
 
-    sun_tbl = get_sun_tbl(sun, elevations_set, latitude, longitude, elevation, tz)
+    sun_tbl = get_sun_tbl(sun, elevations_set, latitude, longitude, altitude, tz, md)
     moon_tbl = get_moon_tbl(moon, sun, tz, jd1, jd2)
 
     tbl = outerjoin(sun_tbl, moon_tbl, on = :Date)
@@ -104,11 +111,13 @@ function sunmoon(start_datetime, end_datetime, latitude, longitude, elevation, t
 end
 
 function get_table(start_date, end_date, latitude, longitude, elevations, points_per_day)
-    elevation, tz = elevation_timezone(latitude, longitude)
+    altitude, tz = altitude_timezone(latitude, longitude)
+    md = magnetic_declination(decimaldate(start_date), latitude, longitude, altitude)
+    @info "the magnetic declination angle is $(round(md; digits=2))°"
     start_datetime = DateTime(start_date, Time(0, 0, 0))
     end_datetime = DateTime(end_date, Time(23, 59, 59))
     elevations_set = Set(elevations)
-    return sunmoon(start_datetime, end_datetime, latitude, longitude, elevation, tz, elevations_set, points_per_day)
+    return sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz, elevations_set, points_per_day, md)
 end
 
 function main(start_date, end_date, latitude, longitude; location_name="$latitude:$longitude", elevations=[20, 30, 45, 60, 75], points_per_day=24, save_table=false)
