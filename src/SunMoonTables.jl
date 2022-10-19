@@ -1,6 +1,6 @@
 module SunMoonTables
 
-using Dates, Statistics
+using Dates, Statistics, Downloads
 using AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Interpolations, TimeZoneFinder, DefaultApplication, CSV, SatelliteToolbox, DataDeps, NCDatasets
 
 export main, Date
@@ -32,7 +32,7 @@ function fallback_download(remotepath, localdir)
     @assert(isdir(localdir))
     filename = basename(remotepath)  # only works for URLs with filename as last part of name
     localpath = joinpath(localdir, filename)
-    Base.download(remotepath, localpath)
+    Downloads.download(remotepath, localpath)
     return localpath
 end
 
