@@ -1,17 +1,42 @@
 module SunMoonTables
 
 using Dates, Statistics
-using AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Earth2014, Interpolations, TimeZoneFinder, DefaultApplication, CSV, SatelliteToolbox
+using AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Interpolations, TimeZoneFinder, DefaultApplication, CSV, SatelliteToolbox, DataDeps, NCDatasets
 
 export main, Date
 
-function altitude_timezone(latitude, longitude)
-    x, y, z = Earth2014.load(; hide_citation=true)
-    world = linear_interpolation((y, x), z)
-    altitude = world(latitude, longitude)
-    tz_str = timezone_at(latitude, longitude) # does not exist!
-    altitude, tz_str
+const ALTITUDE = Ref{Interpolations.GriddedInterpolation{Float64, 2, Matrix{Union{Missing, Int16}}, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}, Vector{Float64}}}}()
+
+function __init__()
+    register(
+        DataDep(
+            "Earth2014",
+            """
+            Reference:
+            - Hirt, C. and M. Rexer (2015), Earth2014: 1 arc-min shape, topography, bedrock 
+            and ice-sheet models — available as gridded data and degree-10,800 spherical 
+            harmonics, International Journal of Applied Earth Observation and Geoinformation
+            39, 103–112, doi:10.10.1016/j.jag.2015.03.001.
+            """,
+            "http://ddfe.curtin.edu.au/models/Earth2014/data_1min/GMT/Earth2014.BED2014.1min.geod.grd",
+            "c7350f22ccfdc07bc2c751015312eb3d5a97d9e75b1259efff63ee0e6e8d17a5",
+            fetch_method = fallback_download
+        )
+    )
+    ALTITUDE[] = NCDataset(datadep"Earth2014/Earth2014.BED2014.1min.geod.grd") do ds
+        interpolate((ds["x"][:], ds["y"][:]), ds["z"][:, :], Gridded(Linear()))
+    end
 end
+
+function fallback_download(remotepath, localdir)
+    @assert(isdir(localdir))
+    filename = basename(remotepath)  # only works for URLs with filename as last part of name
+    localpath = joinpath(localdir, filename)
+    Base.download(remotepath, localpath)
+    return localpath
+end
+
+get_altitude(latitude, longitude) = ALTITUDE[](longitude, latitude)
 
 function sun_alt_az(julian_dates, latitude, longitude, altitude)
     right_ascension, declination = sunpos(julian_dates)
@@ -111,7 +136,8 @@ function sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz
 end
 
 function get_table(start_date, end_date, latitude, longitude, elevations, points_per_day)
-    altitude, tz = altitude_timezone(latitude, longitude)
+    altitude = get_altitude(latitude, longitude)
+    tz = timezone_at(latitude, longitude)
     md = magnetic_declination(decimaldate(start_date), latitude, longitude, altitude)
     @info "the magnetic declination angle is $(round(md; digits=2))°"
     start_datetime = DateTime(start_date, Time(0, 0, 0))
