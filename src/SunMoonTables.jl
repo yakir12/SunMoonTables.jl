@@ -32,7 +32,7 @@ function fallback_download(remotepath, localdir)
     @assert(isdir(localdir))
     filename = basename(remotepath)  # only works for URLs with filename as last part of name
     localpath = joinpath(localdir, filename)
-    Downloads.download(remotepath, localpath)
+    Downloads.download(remotepath, localpath; timeout=Inf)
     return localpath
 end
 
