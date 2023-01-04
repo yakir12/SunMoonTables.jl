@@ -7,8 +7,6 @@ export main, Date
 
 const ALTITUDE = Ref{Interpolations.GriddedInterpolation{Float64, 2, Matrix{Union{Missing, Int16}}, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}, Vector{Float64}}}}()
 
-ENV["DATADEPS_ALWAYS_ACCEPT"] = true
-
 function __init__()
     register(
         DataDep(
