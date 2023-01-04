@@ -48,3 +48,6 @@ These changes are due to rounding errors and are never larger than a minute. If 
 
 It is entirely possible for the moon to rise in one day but set the next day, resulting in a seldom moonrise in one of the days (and vice versa).
 
+5. I tried testing the package first but ran into errors (e.g. `…user provided invalid input 100 times…`)
+
+After you've `add`ed the package, simply start `using` it before `test`ing it. You can `test` the package thereafter if you like. 
