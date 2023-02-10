@@ -21,6 +21,7 @@ For the moon we have the time of each of the moonrises and moonsets within every
 - `elevations`: Specific sun elevations to be included in the table. Defaults to 20°, 30°, 45°, 60°, and 75°.
 - `points_per_day`: Number of data points per day; increase to have more accurate (but slower) results. Defaults to the number of hours per day: 24.
 - `save_table`: Set to true to save a csv copy of the table. Defaults to false.
+- `crepuscular_elevation`: Set the crepuscular elevation to, e.g. -15° if you want to add coumns for when the sun is 15° under the horizon.
 
 For example, to produce a table for the first 10 days of June in the year 2000 for London, with elevations 5°, 10°, 15°, "London city" in its title, 240 data points per day for higher accuracy, and saved csv copy of the results, we would run:
 ```julia

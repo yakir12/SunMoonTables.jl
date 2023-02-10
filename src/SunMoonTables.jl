@@ -7,6 +7,16 @@ export main, Date
 
 const ALTITUDE = Ref{Interpolations.GriddedInterpolation{Float64, 2, Matrix{Union{Missing, Int16}}, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}, Vector{Float64}}}}()
 
+function fallback_download(remotepath, localdir)
+    @assert(isdir(localdir))
+    filename = basename(remotepath)  # only works for URLs with filename as last part of name
+    localpath = joinpath(localdir, filename)
+    downloader = Downloads.Downloader()
+    downloader.easy_hook = (easy, info) -> Downloads.Curl.setopt(easy, Downloads.Curl.CURLOPT_LOW_SPEED_TIME, 60)
+    Downloads.download(remotepath, localpath; downloader=downloader)
+    return localpath
+end
+
 function __init__()
     register(
         DataDep(
@@ -26,16 +36,6 @@ function __init__()
     ALTITUDE[] = NCDataset(datadep"Earth2014/Earth2014.BED2014.1min.geod.grd") do ds
         interpolate((ds["x"][:], ds["y"][:]), ds["z"][:, :], Gridded(Linear()))
     end
-end
-
-function fallback_download(remotepath, localdir)
-    @assert(isdir(localdir))
-    filename = basename(remotepath)  # only works for URLs with filename as last part of name
-    localpath = joinpath(localdir, filename)
-    downloader = Downloads.Downloader()
-    downloader.easy_hook = (easy, info) -> Downloads.Curl.setopt(easy, Downloads.Curl.CURLOPT_LOW_SPEED_TIME, 60)
-    Downloads.download(remotepath, localpath; downloader=downloader)
-    return localpath
 end
 
 get_altitude(latitude, longitude) = ALTITUDE[](longitude, latitude)
@@ -88,15 +88,15 @@ function sun_jd2row(jd, latitude, longitude, altitude, tz, dsun, md)
     (; Date = date, variable, value, elevation)
 end
 
-function get_sun_tbl(sun, elevations_set, latitude, longitude, altitude, tz, md)
+function get_sun_tbl(sun, elevations_set, latitude, longitude, altitude, tz, md, crepuscular_elevation)
     dsun = sun'
     jd = roots(dsun)
-    push!(elevations_set, 0)
-    filter!(x -> 0 ≤ x ≤ 90, elevations_set)
+    push!(elevations_set, crepuscular_elevation, 0)
+    filter!(x -> crepuscular_elevation ≤ x ≤ 90, elevations_set)
     elevations = sort(collect(elevations_set))
     jd = mapreduce(e -> roots(sun - e), vcat, elevations, init = jd)
     df = DataFrame(sun_jd2row.(jd, latitude, longitude, altitude, tz, dsun, md))
-    subset!(df, :elevation => ByRow(≥(0)))
+    subset!(df, :elevation => ByRow(≥(crepuscular_elevation)))
     sun_tbl = unstack(df, :Date, :variable, :value; combine=last)
     cols = filter(∈(unique(subset(df, :variable => ByRow(≠("Noon"))).elevation)), elevations)
     select!(sun_tbl, ["Date", string.("↑", cols, "°")..., "Noon", string.("↓", reverse(cols), "°")...])
@@ -122,13 +122,13 @@ function get_moon_tbl(moon, sun, tz, jd1, jd2)
     return df2
 end
 
-function sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz, elevations_set, points_per_day, md)
+function sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz, elevations_set, points_per_day, md, crepuscular_elevation)
     jd1 = TimeZones.zdt2julian(ZonedDateTime(start_datetime, tz))
     jd2 = TimeZones.zdt2julian(ZonedDateTime(end_datetime, tz))
 
     sun, moon = get_sun_moon(jd1, jd2, latitude, longitude, altitude, points_per_day)
 
-    sun_tbl = get_sun_tbl(sun, elevations_set, latitude, longitude, altitude, tz, md)
+    sun_tbl = get_sun_tbl(sun, elevations_set, latitude, longitude, altitude, tz, md, crepuscular_elevation)
     moon_tbl = get_moon_tbl(moon, sun, tz, jd1, jd2)
 
     tbl = outerjoin(sun_tbl, moon_tbl, on = :Date)
@@ -137,22 +137,23 @@ function sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz
     return tbl
 end
 
-function get_table(start_date, end_date, latitude, longitude, elevations, points_per_day)
+function get_table(start_date, end_date, latitude, longitude, elevations, points_per_day, crepuscular_elevation)
     altitude = get_altitude(latitude, longitude)
     tz = timezone_at(latitude, longitude)
     md = magnetic_declination(decimaldate(start_date), latitude, longitude, altitude)
     @info "the magnetic declination angle is $(round(md; digits=2))°"
-    start_datetime = DateTime(start_date, Time(0, 0, 0))
-    end_datetime = DateTime(end_date, Time(23, 59, 59))
+    start_datetime = DateTime(start_date, Time(0, 1, 0))
+    end_datetime = DateTime(end_date, Time(23, 59, 0))
     elevations_set = Set(elevations)
-    return sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz, elevations_set, points_per_day, md)
+    return sunmoon(start_datetime, end_datetime, latitude, longitude, altitude, tz, elevations_set, points_per_day, md, crepuscular_elevation)
 end
 
-function main(start_date, end_date, latitude, longitude; location_name="$latitude:$longitude", elevations=[20, 30, 45, 60, 75], points_per_day=24, save_table=false)
+function main(start_date, end_date, latitude, longitude; location_name="$latitude:$longitude", elevations=[20, 30, 45, 60, 75], points_per_day=24, save_table=false, crepuscular_elevation=0)
     @assert end_date ≥ start_date "ending date must be equal or later than starting date"
     @assert -90 ≤ latitude ≤ 90 "latitude must be between -90 and 90"
     @assert -180 ≤ latitude ≤ 180 "longitude must be between -180 and 180"
-    df = get_table(start_date, end_date, latitude, longitude, elevations, points_per_day)
+    @assert crepuscular_elevation ≤ 0 "crepuscular elevation must be smaller than 0"
+    df = get_table(start_date, end_date, latitude, longitude, elevations, points_per_day, crepuscular_elevation)
     save_table && CSV.write("table.csv", df)
     file = print2html(df, start_date, end_date, location_name)
     DefaultApplication.open(file)
@@ -177,3 +178,10 @@ function print2html(df, start_date, end_date, location_name)
 end
 
 end
+
+# start_date, end_date, latitude, longitude = (Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257)
+# location_name="$latitude:$longitude"
+# elevations=[20, 30, 45, 60, 75]
+# points_per_day=24
+# save_table=false
+# crepuscular_elevation=-15
