@@ -180,8 +180,10 @@ end
 tosecond(t::T) where {T} = round(Int, t / convert(T, Dates.Second(1)))
 julian2second(jd, tz, jd1) = tosecond(julian2dt(jd, tz) - julian2dt(jd1, tz))
 _second2(s, jd1, tz) = julian2dt(jd1, tz) + Second(s)
-second2time(s, jd1, tz) = string(Time(_second2(s, jd1, tz)))
-second2date(s, jd1, tz) = string(Date(_second2(s, jd1, tz)))
+const time_form = dateformat"HH:MM"
+const date_form = dateformat"u-d"
+second2time(s, jd1, tz) = Dates.format(Time(_second2(s, jd1, tz)), time_form)
+second2date(s, jd1, tz) = Dates.format(Date(_second2(s, jd1, tz)), date_form)
 
 
 function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
@@ -197,15 +199,21 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
     stop = s[2:2:end]
     vspan!(axt, start, stop, color=(:gray, 0.5))
     lines!(axt, x, moon.(jds))
-    axd = Axis(fig[1,1], xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), yticks = 0:10:100, xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
+    axd = Axis(fig[1,1], xticks = WilkinsonTicks(2), xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), yticks = 0:10:100, xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
     lines!(axd, x, 100mphase.(jds))
     hidespines!(axd)
-    hideydecorations!(axd, label = false, ticklabels = false, ticks = false, grid = true, minorgrid = true, minorticks = false)
+    hidedecorations!(axd, label = false, ticklabels = false, ticks = false, grid = true, minorgrid = true, minorticks = false)
     sl = IntervalSlider(fig[2, 1], range = range(jd1, jd2, n), startvalues = (jd1, min(jd1+1, jd2)))
     on(sl.interval) do jds
         s1, s2 = julian2second.(jds, tz, jd1)
         xlims!(axt, s1, s2) 
         xlims!(axd, s1, s2) 
+        dt1, dt2 = julian2dt.(jds, tz)
+        dt1 = ceil(dt1, Hour(1))
+        dt2 = floor(dt2, Hour(1))
+        dts = range(dt1, dt2, step=Hour(3))
+        s =  tosecond.(dts .- julian2dt(jd1, tz))
+        axt.xticks[] = s
     end
     notify(sl.interval)
     return fig
