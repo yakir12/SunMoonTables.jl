@@ -192,10 +192,10 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
     x = julian2second.(jds, tz, jd1)
     fig = Figure()
     axt = Axis(fig[1,1], xtickformat = s -> second2time.(s, jd1, tz), limits=(nothing, (0,90)), yticks = 0:10:90, xlabel = "Time", ylabel = "Elevation", ytickformat = "{:n}°")
-    js = roots(sun + crepuscular_elevation)
+    js = roots(sun - crepuscular_elevation)
     sort!(unique!(push!(js, jd1, jd2)))
     s = julian2second.(js, tz, jd1)
-    start = s[1:2:end]
+    start = s[1:2:end-1]
     stop = s[2:2:end]
     vspan!(axt, start, stop, color=(:gray, 0.5))
     lines!(axt, x, moon.(jds))
@@ -208,12 +208,12 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
         s1, s2 = julian2second.(jds, tz, jd1)
         xlims!(axt, s1, s2) 
         xlims!(axd, s1, s2) 
-        dt1, dt2 = julian2dt.(jds, tz)
-        dt1 = ceil(dt1, Hour(1))
-        dt2 = floor(dt2, Hour(1))
-        dts = range(dt1, dt2, step=Hour(3))
-        s =  tosecond.(dts .- julian2dt(jd1, tz))
-        axt.xticks[] = s
+        # dt1, dt2 = julian2dt.(jds, tz)
+        # dt1 = ceil(dt1, Hour(1))
+        # dt2 = floor(dt2, Hour(1))
+        # dts = range(dt1, dt2, step=Hour(3))
+        # s =  tosecond.(dts .- julian2dt(jd1, tz))
+        # axt.xticks[] = s
     end
     notify(sl.interval)
     return fig
