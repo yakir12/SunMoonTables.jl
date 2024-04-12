@@ -28,6 +28,12 @@ For example, to produce a table for the first 10 days of June in the year 2000 f
 main(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257; elevations=[5, 10, 15], location_name="London city", points_per_day=240, save_table=true))
 ```
 
+## Moon figure
+You can create an applet that allows you to explore the state of the moon in a lot more detail with `moon_app` which has the exact same interface as `main`:
+```
+moon_app(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257)
+```
+
 ## Notes
 - The reported azimuth is not the azimuth to the global geographic North but to the local magnetic North. The angle between these two directions is called the magnetic declination angle and is reported to the user when running `main`. The declination angle does not change much within 1 year and 100 km.
 - The times are in local time (local to the coordinates you specified).

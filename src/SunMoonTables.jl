@@ -1,9 +1,9 @@
 module SunMoonTables
 
 using Dates, Statistics, Downloads
-using AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Interpolations, TimeZoneFinder, DefaultApplication, CSV, SatelliteToolbox, DataDeps, NCDatasets
+using AstroLib, TimeZones, PrettyTables, DataFrames, ApproxFun, Interpolations, TimeZoneFinder, DefaultApplication, CSV, SatelliteToolbox, DataDeps, NCDatasets, GLMakie
 
-export main, Date
+export main, moon_app, Date
 
 const ALTITUDE = Ref{Interpolations.GriddedInterpolation{Float64, 2, Matrix{Union{Missing, Int16}}, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}, Vector{Float64}}}}()
 
@@ -175,6 +175,56 @@ function print2html(df, start_date, end_date, location_name)
         pretty_table(io, df; backend=Val(:html), tf=tf, show_subheader = false, formatters = ft_nomissing, standalone=true, highlighters=hl_row(1:2:nrow(df), HtmlDecoration(background = "light_gray",)), show_row_number=false, title="$start_date - $end_date @ $location_name", title_alignment=:c)
     end
     return file
+end
+
+tosecond(t::T) where {T} = round(Int, t / convert(T, Dates.Second(1)))
+julian2second(jd, tz, jd1) = tosecond(julian2dt(jd, tz) - julian2dt(jd1, tz))
+_second2(s, jd1, tz) = julian2dt(jd1, tz) + Second(s)
+second2time(s, jd1, tz) = string(Time(_second2(s, jd1, tz)))
+second2date(s, jd1, tz) = string(Date(_second2(s, jd1, tz)))
+
+
+function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
+    n = round(Int, 240*(jd2 - jd1))
+    jds = range(jd1, jd2, n)
+    x = julian2second.(jds, tz, jd1)
+    fig = Figure()
+    axt = Axis(fig[1,1], xtickformat = s -> second2time.(s, jd1, tz), limits=(nothing, (0,90)), yticks = 0:10:90, xlabel = "Time", ylabel = "Elevation", ytickformat = "{:n}°")
+    lines!(axt, x, moon.(jds))
+    js = roots(sun + crepuscular_elevation)
+    sort!(unique!(push!(js, jd1, jd2)))
+    start = js[1:2:end]
+    stop = js[2:2:end]
+    vspan!(axt, start, stop, color=:gray)
+    axd = Axis(fig[1,1], xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), yticks = 0:10:100, xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
+    lines!(axd, x, 100mphase.(jds))
+    hidespines!(axd)
+    hideydecorations!(axd, label = false, ticklabels = false, ticks = false, grid = true, minorgrid = true, minorticks = false)
+    sl = IntervalSlider(fig[2, 1], range = range(jd1, jd2, n), startvalues = (jd1, min(jd1+1, jd2)))
+    on(sl.interval) do jds
+        s1, s2 = julian2second.(jds, tz, jd1)
+        xlims!(axt, s1, s2) 
+        xlims!(axd, s1, s2) 
+    end
+    notify(sl.interval)
+    return fig
+end
+
+function moon_app(start_date, end_date, latitude, longitude; location_name="$latitude:$longitude", elevations=[20, 30, 45, 60, 75], points_per_day=24, save_table=false, crepuscular_elevation=0)
+    @assert end_date ≥ start_date "ending date must be equal or later than starting date"
+    @assert -90 ≤ latitude ≤ 90 "latitude must be between -90 and 90"
+    @assert -180 ≤ latitude ≤ 180 "longitude must be between -180 and 180"
+    @assert crepuscular_elevation ≤ 0 "crepuscular elevation must be smaller than 0"
+    altitude = get_altitude(latitude, longitude)
+    tz = timezone_at(latitude, longitude)
+    start_datetime = DateTime(start_date, Time(0, 1, 0))
+    end_datetime = DateTime(end_date, Time(23, 59, 0))
+    elevations_set = Set(elevations)
+    jd1 = TimeZones.zdt2julian(ZonedDateTime(start_datetime, tz))
+    jd2 = TimeZones.zdt2julian(ZonedDateTime(end_datetime, tz))
+    sun, moon = get_sun_moon(jd1, jd2, latitude, longitude, altitude, points_per_day)
+    fig = moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
+    display(fig)
 end
 
 end
