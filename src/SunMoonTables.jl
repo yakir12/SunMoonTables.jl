@@ -190,12 +190,13 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
     x = julian2second.(jds, tz, jd1)
     fig = Figure()
     axt = Axis(fig[1,1], xtickformat = s -> second2time.(s, jd1, tz), limits=(nothing, (0,90)), yticks = 0:10:90, xlabel = "Time", ylabel = "Elevation", ytickformat = "{:n}°")
-    lines!(axt, x, moon.(jds))
     js = roots(sun + crepuscular_elevation)
     sort!(unique!(push!(js, jd1, jd2)))
-    start = js[1:2:end]
-    stop = js[2:2:end]
-    vspan!(axt, start, stop, color=:gray)
+    s = julian2second.(js, tz, jd1)
+    start = s[1:2:end]
+    stop = s[2:2:end]
+    vspan!(axt, start, stop, color=(:gray, 0.5))
+    lines!(axt, x, moon.(jds))
     axd = Axis(fig[1,1], xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), yticks = 0:10:100, xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
     lines!(axd, x, 100mphase.(jds))
     hidespines!(axd)
