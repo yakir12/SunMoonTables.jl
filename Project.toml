@@ -1,7 +1,7 @@
 name = "SunMoonTables"
 uuid = "262fdefd-206d-4928-9cf6-d8523d0ffd94"
 authors = ["Yakir Gagnon <12.yakir@gmail.com> and contributors"]
-version = "0.4.4"
+version = "0.5.4"
 
 [deps]
 ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"

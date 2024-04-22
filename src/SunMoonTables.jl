@@ -191,7 +191,8 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
     jds = range(jd1, jd2, n)
     x = julian2second.(jds, tz, jd1)
     fig = Figure()
-    axt = Axis(fig[1,1], xtickformat = s -> second2time.(s, jd1, tz), limits=(nothing, (0,90)), yticks = 0:10:90, xlabel = "Time", ylabel = "Elevation", ytickformat = "{:n}°")
+    axt = Axis(fig[1,1], xtickformat = s -> second2time.(s, jd1, tz), limits=(nothing, (0,90)), xlabel = "Time", ylabel = "Elevation", ytickformat = "{:n}°")
+    # axt = Axis(fig[1,1], xtickformat = s -> second2time.(s, jd1, tz), limits=(nothing, (0,90)), yticks = 0:10:90, xlabel = "Time", ylabel = "Elevation", ytickformat = "{:n}°")
     js = roots(sun - crepuscular_elevation)
     sort!(unique!(push!(js, jd1, jd2)))
     s = julian2second.(js, tz, jd1)
@@ -199,7 +200,8 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
     stop = s[2:2:end]
     vspan!(axt, start, stop, color=(:gray, 0.5))
     lines!(axt, x, moon.(jds))
-    axd = Axis(fig[1,1], xticks = WilkinsonTicks(2), xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), yticks = 0:10:100, xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
+    axd = Axis(fig[1,1], xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
+    # axd = Axis(fig[1,1], xticks = WilkinsonTicks(2), xtickformat = s -> second2date.(s, jd1, tz), limits=(nothing, (0,100)), yticks = 0:10:100, xlabel = "Date", ylabel = "Phase", ytickformat = "{:n}%",  xaxisposition = :top, yaxisposition = :right)
     lines!(axd, x, 100mphase.(jds))
     hidespines!(axd)
     hidedecorations!(axd, label = false, ticklabels = false, ticks = false, grid = true, minorgrid = true, minorticks = false)
@@ -216,6 +218,10 @@ function moon_figure(jd1, jd2, tz, crepuscular_elevation, sun, moon)
         # axt.xticks[] = s
     end
     notify(sl.interval)
+    btn = Button(fig[3,1], label = "Save", tellwidth=false)
+    on(btn.clicks) do _
+        save(string("sunmoon", now(), ".png"), fig)
+    end
     return fig
 end
 
