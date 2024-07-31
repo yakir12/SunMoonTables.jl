@@ -13,7 +13,7 @@ main(Date(2000, 6, 1), Date(2000, 6, 10), 51.5085, -0.1257)
 ```
 
 ## What's in the tables
-For each day we have sunrise with time and local magnetic azimuth, time for each of the (default) elevations: 20°, 30°, 45°, 60°, and 75° beforenoon, time and elevation at noon (i.e. highest sun-elevation that day), and afternoon, as well as time and local magnetic azimuth for sunset. 
+For each day we have time and local magnetic azimuth for sunrise, the (defualt) elevations: 20°, 30°, 45°, 60°, and 75° beforenoon, noon (i.e. highest sun-elevation that day), afternoon, as well as sunset. 
 For the moon we have the time of each of the moonrises and moonsets within every 24 hours, as well as the phase of the moon (in percent).
 
 ## Options
