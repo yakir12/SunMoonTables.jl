@@ -84,7 +84,8 @@ function sun_jd2row(jd, latitude, longitude, altitude, tz, dsun, md)
     γ = round(Int, az + md)
     sl = dsun(jd)
     variable = abs(sl) < 0.01 ? "Noon" : sl > 0 ? "↑$(elevation)°" : "↓$(elevation)°"
-    value = variable == "Noon" ? join([time, string(elevation, "°")], " ") : elevation == 0 ? join([time, string(γ, "°")], " ") : time
+    # value = variable == "Noon" ? join([time, string(elevation, "°")], " ") : elevation == 0 ? join([time, string(γ, "°")], " ") : time
+    value = variable == "Noon" ? join([time, string(elevation, "°")], " ") : join([time, string(γ, "°")], " ")
     (; Date = date, variable, value, elevation)
 end
 
