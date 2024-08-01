@@ -36,6 +36,19 @@ function __init__()
     ALTITUDE[] = NCDataset(datadep"Earth2014/Earth2014.BED2014.1min.geod.grd") do ds
         interpolate((ds["x"][:], ds["y"][:]), ds["z"][:, :], Gridded(Linear()))
     end
+    if env_bool("CI")
+        # Probably in a CI environment
+        if !haskey(ENV, "DATADEPS_ALWAYS_ACCEPT")
+            # No user settings for ALWAYS_ACCEPT or not
+            ENV[DATADEPS_ALWAYS_ACCEPT]=true
+            @info """Detected that probably in a CI environment,
+                     DATADEPS_ALWAYS_ACCEPT unset: defaulted to true.
+                     If this is incorrect please set DATADEPS_ALWAYS_ACCEPT to false.
+                     Or to suppress this message, set DATADEPS_ALWAYS_ACCEPT to true.
+                     Then restart the program.
+                  """
+        end
+    end
 end
 
 get_altitude(latitude, longitude) = ALTITUDE[](longitude, latitude)
